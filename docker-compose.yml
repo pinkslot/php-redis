@@ -1,0 +1,40 @@
+version: '3'
+services:
+  web:
+    image: nginx:alpine
+    volumes:
+      - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - "./web:/var/www/html"
+      - "./etc/nginx/default.template.conf:/etc/nginx/conf.d/default.template"
+    ports:
+      - "8000:80"
+    environment:
+      - NGINX_HOST=${NGINX_HOST}
+    command: /bin/sh -c "envsubst '$$NGINX_HOST' < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    restart: always
+    depends_on:
+      - php
+      - redis
+  php:
+    env_file:
+      - ".env"
+    image: nanoninja/php-fpm:${PHP_VERSION}
+    restart: always
+    volumes:
+      - "./etc/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
+      - "./web:/var/www/html"
+    depends_on:
+      - redis
+  composer:
+    image: "composer"
+    volumes:
+      - "./web/app:/app"
+    command: install
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1
+    volumes:
+      - "./var/redis:/data"
